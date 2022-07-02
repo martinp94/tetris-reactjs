@@ -1,0 +1,1 @@
+export type GameStatus = 'started' | 'paused' | 'resumed' | null

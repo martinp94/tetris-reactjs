@@ -1,0 +1,19 @@
+* {
+	box-sizing: border-box;
+}
+
+main {
+	width: 100vw;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+	align-items: center;
+	background-color: rgb(255, 250, 208);
+}
+
+.game-board {
+}
+
+#game-canvas {
+	/* height: 100%; */
+}
