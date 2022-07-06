@@ -1,13 +1,8 @@
 import { useState, useEffect } from 'react'
 import { initialMatrix } from '../data/initialMatrix'
-import { Tetromino, GameBoard, GameStatus } from '../types'
+import { GameBoard, GameStatus } from '../types'
+import { useTetromino } from '../hooks/useTetromino'
 
-
-const tetrominoT: Tetromino = {
-	name: 'T',
-	color: '#800080',
-	matrix: [[null, '#800080', null], ['#800080', '#800080', '#800080']]
-}
 
 let matrix: GameBoard = JSON.parse(JSON.stringify(initialMatrix))
 console.log('matrix', matrix)
@@ -17,25 +12,31 @@ let timeoutId: null | ReturnType<typeof setTimeout> = null
 
 export const useGameLoop = (gameStatus: GameStatus): [GameBoard, boolean, number] => {
   const [speed] = useState<number>(50)
-  const [currentTetromino, setCurrentTetromino] = useState<Tetromino | null>(null)
-  // const [nextTetromino, setNextTetromino] = useState<Tetromino | null>(null)
   // const [score, setScore] = useState<number>(0)
   const [gameOver, setGameOver] = useState<boolean>(false)
   const [updateTimestamp, setUpdateTimestamp] = useState<number>(Date.now())
   const [x, setX] = useState<number>(-1)
   const [y, setY] = useState<number>(-1)
 
+	const [
+		currentTetromino,
+		currentShape,
+		updateTetrominoes,
+		rotate,
+		// getNextShape
+	] = useTetromino()
+
 	const clearPrevTetromino = (): void => {
-		if (!currentTetromino) return
+		if (!currentShape) return
 
 		let tetroX = 0
 		let tetroY = 0
 
-		for (let col = prevY; col < prevY + currentTetromino.matrix.length; col++) {
-			for (let row = prevX; row < prevX + currentTetromino.matrix[0].length; row++) {
+		for (let col = prevY; col < prevY + currentShape.length; col++) {
+			for (let row = prevX; row < prevX + currentShape[0].length; row++) {
 				console.log('tetroX', tetroX)
 				console.log('tetroY', tetroY)
-				console.log('currentTetromino[tetroY][tetroX]', currentTetromino.matrix[tetroY][tetroX])
+				console.log('currentTetromino[tetroY][tetroX]', currentShape[tetroY][tetroX])
 				matrix[col][row] = null
 				tetroX++
 			}
@@ -46,24 +47,24 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, boolean, number
 	}
 
 	const updateMatrix = () => {
-		if (!currentTetromino) return
+		if (!currentShape) return
 
-		if (y + currentTetromino.matrix.length > 20) return
+		if (y + currentShape.length > 20) return
 		clearPrevTetromino()
 
 		let tetroX = 0
 		let tetroY = 0
 
-		for (let col = y; col < y + currentTetromino.matrix.length; col++) {
-			for (let row = x; row < x + currentTetromino.matrix[0].length; row++) {
+		for (let col = y; col < y + currentShape.length; col++) {
+			for (let row = x; row < x + currentShape[0].length; row++) {
 
 				console.log('updateMatrix tetroX', tetroX)
 				console.log('updateMatrix tetroY', tetroY)
 				console.log('updateMatrix col', col)
 				console.log('updateMatrix row', row)
-				console.log('updateMatrix currentTetromino[tetroY][tetroX]', currentTetromino.matrix[tetroY][tetroX])
+				console.log('updateMatrix currentTetromino[tetroY][tetroX]', currentShape[tetroY][tetroX])
 				if (typeof matrix[col] !== 'undefined') {
-					matrix[col][row] = currentTetromino.matrix[tetroY][tetroX]
+					matrix[col][row] = currentShape[tetroY][tetroX]
 				}
 				tetroX++
 			}
@@ -74,21 +75,21 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, boolean, number
 	}
 
 	const updateMatrixPrevElement = () => {
-		if (!currentTetromino) return
+		if (!currentShape) return
 
 		let tetroX = 0
 		let tetroY = 0
 
-		for (let col = prevY; col < prevY + currentTetromino.matrix.length; col++) {
-			for (let row = prevX; row < prevX + currentTetromino.matrix[0].length; row++) {
+		for (let col = prevY; col < prevY + currentShape.length; col++) {
+			for (let row = prevX; row < prevX + currentShape[0].length; row++) {
 
 				console.log('updateMatrix tetroX', tetroX)
 				console.log('updateMatrix tetroY', tetroY)
 				console.log('updateMatrix col', col)
 				console.log('updateMatrix row', row)
-				console.log('updateMatrix currentTetromino[tetroY][tetroX]', currentTetromino.matrix[tetroY][tetroX])
+				console.log('updateMatrix currentTetromino[tetroY][tetroX]', currentShape[tetroY][tetroX])
 				if (typeof matrix[col] !== 'undefined') {
-					matrix[col][row] = currentTetromino.matrix[tetroY][tetroX]
+					matrix[col][row] = currentShape[tetroY][tetroX]
 				}
 				tetroX++
 			}
@@ -99,30 +100,30 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, boolean, number
 	}
 
 	const checkBounds = (x: number) => {
-		if (!currentTetromino) return
+		if (!currentShape) return
 
-		if (x + currentTetromino.matrix[0].length > 9 || x < 0) return false
+		if (x + currentShape[0].length > 9 || x < 0) return false
 		return true
 	}
 
 	const checkCollision = () => {
-		if (!currentTetromino) return
+		if (!currentShape) return
 
-		if (y + currentTetromino.matrix.length > 20) return true
+		if (y + currentShape.length > 20) return true
 		clearPrevTetromino()
 
 		let tetroX = 0
 		let tetroY = 0
 
-		for (let col = y; col < y + currentTetromino.matrix.length; col++) {
-			for (let row = x; row < x + currentTetromino.matrix[0].length; row++) {
+		for (let col = y; col < y + currentShape.length; col++) {
+			for (let row = x; row < x + currentShape[0].length; row++) {
 				console.log('checkCollision tetroX', tetroX)
 				console.log('checkCollision tetroY', tetroY)
 				console.log('checkCollision r', row)
 				console.log('checkCollision c', col)
-				console.log('checkCollision currentTetromino[tetroY][tetroX]', currentTetromino.matrix[tetroY][tetroX])
+				console.log('checkCollision currentTetromino[tetroY][tetroX]', currentShape[tetroY][tetroX])
 				console.log('checkCollision matrix[col][row]', matrix[col][row])
-				if (matrix[col][row] !== null && currentTetromino.matrix[tetroY][tetroX] !== null) {
+				if (matrix[col][row] !== null && currentShape[tetroY][tetroX] !== null) {
 					updateMatrixPrevElement()
 					return true
 				}
@@ -145,12 +146,12 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, boolean, number
 	}
 
 	useEffect(() => {
-		if (!currentTetromino || gameOver || x === -1 || y === -1) return
+		if (!currentShape || gameOver || x === -1 || y === -1) return
 
 		if (y < 20) {
 			const cc = checkCollision()
 			console.log(`yisy cc`, y, cc)
-			if (cc && y < currentTetromino.matrix.length) return setGameOver(true)
+			if (cc && y < currentShape.length) return setGameOver(true)
 
 			if (checkCollision()) {
 				setX(-1)
@@ -169,28 +170,30 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, boolean, number
 		setUpdateTimestamp(Date.now())
 
 		timeoutId = setTimeout(() => {
+			rotate()
 			setY(y + 1)
 			prevY = y
 		}, speed)
-	}, [x, y, currentTetromino, gameOver])
+	}, [x, y, currentShape, gameOver])
 
 	useEffect(() => {
-		if (!currentTetromino) return
+		if (!currentShape) return
 
 		if (x === - 1 && y === -1) {
+			updateTetrominoes()
 			const initialX = getInitialX()
 			setX(initialX)
 			prevX = initialX
 			setY(0)
 			prevY = 0
 		}
-	}, [x, y, currentTetromino])
+	}, [x, y, currentShape])
 
 	useEffect(() => {
 		if (gameStatus === 'started') {
 			matrix = JSON.parse(JSON.stringify(initialMatrix))
-			setCurrentTetromino(tetrominoT)
 			setGameOver(false)
+			updateTetrominoes()
 		}
 	}, [gameStatus])
 

@@ -1,6 +1,6 @@
 import { GameStatus } from './gameStatus'
 import { GameBoard } from './gameBoard'
-import { Tetromino, TetrominoColor } from './tetromino'
+import { Tetromino, TetrominoColor, TetrominoShape } from './tetromino'
 
 type FixMeLater = any;
 
@@ -10,5 +10,6 @@ export {
 	GameStatus,
 	GameBoard,
 	Tetromino,
-	TetrominoColor
+	TetrominoColor,
+	TetrominoShape
 }
