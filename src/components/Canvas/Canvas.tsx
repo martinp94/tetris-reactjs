@@ -5,13 +5,14 @@ type Matrix = GameBoard;
 
 interface Props {
 	matrix: Matrix;
+	currentTetrominoMatrix: Matrix;
 	isGameOver: boolean;
 	updateTimestamp: number;
 }
 
-
-const draw = (ctx: (CanvasRenderingContext2D | null), matrix: Matrix): void => {
+const draw = (ctx: (CanvasRenderingContext2D | null), matrix: Matrix, currentTetrominoMatrix: Matrix): void => {
 	console.log('matrica', matrix)
+	console.log('matrica current', currentTetrominoMatrix)
 	if (!ctx) return
 
 	const canvasWidth = ctx.canvas.width
@@ -27,7 +28,7 @@ const draw = (ctx: (CanvasRenderingContext2D | null), matrix: Matrix): void => {
 		for (let row = 0; row < 10; row++) {
 			ctx.beginPath()
 			// ctx.fillStyle = 'rgb(255, 0, 0)'
-			ctx.fillStyle = matrix[col][row] || '#000'
+			ctx.fillStyle = matrix[col][row] || currentTetrominoMatrix[col][row] || '#000'
 			// if (row === 4 && [3,4,5,6].includes(col)) {
 			// 	ctx.fillStyle = '#00BFFF'
 			// } else {
@@ -43,7 +44,7 @@ const draw = (ctx: (CanvasRenderingContext2D | null), matrix: Matrix): void => {
 
 }
 
-export const Canvas: React.FC<Props> = ({ matrix, updateTimestamp }) => {
+export const Canvas: React.FC<Props> = ({ matrix, currentTetrominoMatrix, updateTimestamp }) => {
 	const canvasRef = useRef<HTMLCanvasElement>(null)
 
 	useEffect(() => {
@@ -55,7 +56,7 @@ export const Canvas: React.FC<Props> = ({ matrix, updateTimestamp }) => {
 	
 			const context: (CanvasRenderingContext2D | null) = canvas.getContext('2d')
 	
-			draw(context, matrix)
+			draw(context, matrix, currentTetrominoMatrix)
 		}
 	}, [updateTimestamp])
 

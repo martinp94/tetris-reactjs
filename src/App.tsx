@@ -10,7 +10,7 @@ import { useState, useEffect } from 'react'
 const App: React.FC = () => {
   const [gameStatus, setGameStatus] = useState<GameStatus>(null)
 
-  const [matrix, gameOver, updateTimestamp]: [GameBoard, boolean, number] = useGameLoop(gameStatus)
+  const [matrix, currentTetrominoMatrix, gameOver, updateTimestamp]: [GameBoard, GameBoard, boolean, number] = useGameLoop(gameStatus)
 
   const prevGameOver = usePrevious(gameOver)
   
@@ -28,6 +28,7 @@ const App: React.FC = () => {
         updateTimestamp={updateTimestamp}
         isGameOver={gameOver}
         matrix={matrix}
+        currentTetrominoMatrix={currentTetrominoMatrix}
       />
       {gameStatus === null ? <button onClick={() => { setGameStatus('started') }}>Start new game</button> : null}
       {gameStatus && ['started', 'resumed'].includes(gameStatus) ? <button onClick={() => { setGameStatus('paused') }}>Pause</button> : null}

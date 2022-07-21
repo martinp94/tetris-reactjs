@@ -17,7 +17,12 @@ const getRandomTetromino = (): Tetromino => {
 	}
 }
 
-export const useTetromino = (): [Tetromino | null, TetrominoShape | null, Function, Function, Function] => {
+const uniqueId = (): string => {
+  return Math.ceil(Math.random() * Date.now()).toPrecision(16).toString().replace(".", "")
+}
+
+export const useTetromino = (): [string, Tetromino | null, TetrominoShape | null, number, number, Function, Function, Function] => {
+	const [id, setId] = useState<string>(uniqueId())
   const [currentTetromino, setCurrentTetromino] = useState<Tetromino | null>(null)
   const [nextTetromino, setNextTetromino] = useState<Tetromino | null>(null)
 	const [shape, setShape] = useState<TetrominoShape | null>(null)
@@ -38,6 +43,7 @@ export const useTetromino = (): [Tetromino | null, TetrominoShape | null, Functi
 		setCurrentTetromino(tetromino)
 		setShapeIndex(0)
 		setShape(tetromino.shapes[0])
+		setId(uniqueId())
 	}
 
 	const getNextShape = (): [TetrominoShape | null, number] => {
@@ -57,5 +63,8 @@ export const useTetromino = (): [Tetromino | null, TetrominoShape | null, Functi
 		setShape(nextShape)
 	}
 
-	return [currentTetromino, shape, updateTetrominoes, rotate, getNextShape]
+	const shapeWidth = shape ? shape[0].length : 0
+	const shapeHeight = shape ? shape.length : 0
+
+	return [id, currentTetromino, shape, shapeWidth, shapeHeight, updateTetrominoes, rotate, getNextShape]
 }
