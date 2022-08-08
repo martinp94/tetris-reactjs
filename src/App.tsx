@@ -21,7 +21,7 @@ const App: React.FC = () => {
 
   }, [gameOver])
 
-  console.log('updtimespam[', updateTimestamp)
+  // console.log('updtimespam[', updateTimestamp)
   return (
     <main>
       <Canvas

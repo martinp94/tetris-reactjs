@@ -11,8 +11,8 @@ interface Props {
 }
 
 const draw = (ctx: (CanvasRenderingContext2D | null), matrix: Matrix, currentTetrominoMatrix: Matrix): void => {
-	console.log('matrica', matrix)
-	console.log('matrica current', currentTetrominoMatrix)
+	// console.log('matrica', matrix)
+	// console.log('matrica current', currentTetrominoMatrix)
 	if (!ctx) return
 
 	const canvasWidth = ctx.canvas.width

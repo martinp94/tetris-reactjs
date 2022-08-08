@@ -5,5 +5,6 @@ export type TetrominoShape = Array<Array<TetrominoColor | null>>
 export type Tetromino = {
 	name: string;
 	color: TetrominoColor;
-	shapes: Array<TetrominoShape>
+	shapes: Array<TetrominoShape>;
+	xyDiff: Array<Array<number>>;
 }

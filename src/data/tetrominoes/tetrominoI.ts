@@ -6,5 +6,9 @@ export const tetrominoI: Tetromino = {
 	shapes: [
 		[['#00FFFF', '#00FFFF', '#00FFFF', '#00FFFF']],
 		[['#00FFFF'], ['#00FFFF'], ['#00FFFF'], ['#00FFFF']]
+	],
+	xyDiff: [
+		[-2, 1],
+		[2, -1]
 	]
 }

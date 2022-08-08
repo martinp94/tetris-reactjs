@@ -21,7 +21,15 @@ const uniqueId = (): string => {
   return Math.ceil(Math.random() * Date.now()).toPrecision(16).toString().replace(".", "")
 }
 
-export const useTetromino = (): [string, Tetromino | null, TetrominoShape | null, number, number, Function, Function, Function] => {
+export const useTetromino = (): {
+	tetrominoId: string,
+	currentTetromino: Tetromino | null,
+	currentShape: TetrominoShape | null,
+	currentShapeIndex: number,
+	updateTetrominoes: Function,
+	rotate: Function,
+	getNextShape: () => [TetrominoShape | null, number, Array<number>]
+} => {
 	const [id, setId] = useState<string>(uniqueId())
   const [currentTetromino, setCurrentTetromino] = useState<Tetromino | null>(null)
   const [nextTetromino, setNextTetromino] = useState<Tetromino | null>(null)
@@ -29,6 +37,7 @@ export const useTetromino = (): [string, Tetromino | null, TetrominoShape | null
 	const [shapeIndex, setShapeIndex] = useState<number>(0)
 
 	const updateTetrominoes = (): void => {
+		console.log('updateTetrominoes')
 		let tetromino: Tetromino | null = null
 
 		if (nextTetromino) {
@@ -39,19 +48,21 @@ export const useTetromino = (): [string, Tetromino | null, TetrominoShape | null
 			setNextTetromino(getRandomTetromino())
 		}
 
-		console.log('updated tetromino', tetromino.name)
+		// console.log('updated tetromino', tetromino.name)
 		setCurrentTetromino(tetromino)
 		setShapeIndex(0)
 		setShape(tetromino.shapes[0])
 		setId(uniqueId())
 	}
 
-	const getNextShape = (): [TetrominoShape | null, number] => {
-		if (!currentTetromino) return [null, 0]
+	const getNextShape = (): [TetrominoShape | null, number, Array<number>] => {
+		if (!currentTetromino) return [null, 0, [0, 0]]
 
 		const nextShapeIndex = (shapeIndex + 1) % currentTetromino.shapes.length
 
-		return [currentTetromino.shapes[nextShapeIndex], nextShapeIndex]
+		const nextShape = currentTetromino.shapes[nextShapeIndex]
+
+		return [nextShape, nextShapeIndex, currentTetromino.xyDiff[nextShapeIndex]]
 	}
 
 	const rotate = (): void => {
@@ -63,8 +74,14 @@ export const useTetromino = (): [string, Tetromino | null, TetrominoShape | null
 		setShape(nextShape)
 	}
 
-	const shapeWidth = shape ? shape[0].length : 0
-	const shapeHeight = shape ? shape.length : 0
-
-	return [id, currentTetromino, shape, shapeWidth, shapeHeight, updateTetrominoes, rotate, getNextShape]
+	return {
+		tetrominoId: id,
+		currentTetromino,
+		currentShape: shape,
+		currentShapeIndex: shapeIndex,
+		
+		updateTetrominoes,
+		rotate,
+		getNextShape
+	}
 }
