@@ -37,7 +37,6 @@ export const useTetromino = (): {
 	const [shapeIndex, setShapeIndex] = useState<number>(0)
 
 	const updateTetrominoes = (): void => {
-		console.log('updateTetrominoes')
 		let tetromino: Tetromino | null = null
 
 		if (nextTetromino) {
@@ -48,7 +47,6 @@ export const useTetromino = (): {
 			setNextTetromino(getRandomTetromino())
 		}
 
-		// console.log('updated tetromino', tetromino.name)
 		setCurrentTetromino(tetromino)
 		setShapeIndex(0)
 		setShape(tetromino.shapes[0])
@@ -67,8 +65,6 @@ export const useTetromino = (): {
 
 	const rotate = (): void => {
 		const [nextShape, nextShapeIndex] = getNextShape()
-
-		console.log('rotate', nextShape, nextShapeIndex)
 
 		setShapeIndex(nextShapeIndex)
 		setShape(nextShape)
