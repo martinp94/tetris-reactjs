@@ -18,66 +18,79 @@ const getRandomTetromino = (): Tetromino => {
 }
 
 const uniqueId = (): string => {
-  return Math.ceil(Math.random() * Date.now()).toPrecision(16).toString().replace(".", "")
+	return Math.ceil(Math.random() * Date.now()).toPrecision(16).toString().replace(".", "")
 }
 
 export const useTetromino = (): {
 	tetrominoId: string,
 	currentTetromino: Tetromino | null,
-	currentShape: TetrominoShape | null,
-	currentShapeIndex: number,
-	updateTetrominoes: Function,
-	rotate: Function,
-	getNextShape: () => [TetrominoShape | null, number, Array<number>]
+	currentTetrominoShape: TetrominoShape | null,
+	nextTetromino1: Tetromino | null,
+	nextTetromino2: Tetromino | null,
+	nextTetromino3: Tetromino | null,
+	updateTetrominoes: Function
 } => {
 	const [id, setId] = useState<string>(uniqueId())
-  const [currentTetromino, setCurrentTetromino] = useState<Tetromino | null>(null)
-  const [nextTetromino, setNextTetromino] = useState<Tetromino | null>(null)
+	const [currentTetromino, setCurrentTetromino] = useState<Tetromino | null>(null)
+	const [nextTetromino1, setNextTetromino1] = useState<Tetromino | null>(null)
+	const [nextTetromino2, setNextTetromino2] = useState<Tetromino | null>(null)
+	const [nextTetromino3, setNextTetromino3] = useState<Tetromino | null>(null)
 	const [shape, setShape] = useState<TetrominoShape | null>(null)
-	const [shapeIndex, setShapeIndex] = useState<number>(0)
+
+	useEffect(() => {
+		const tetromino1: Tetromino | null = getRandomTetromino()
+		setNextTetromino1(tetromino1)
+
+		let tetromino2: Tetromino | null = getRandomTetromino()
+
+		while (tetromino2?.name === tetromino1?.name) {
+			tetromino2 = getRandomTetromino()
+		}
+
+		setNextTetromino2(tetromino2)
+
+		let tetromino3: Tetromino | null = getRandomTetromino()
+
+		while (tetromino3?.name === tetromino1?.name || tetromino3?.name === tetromino2?.name) {
+			tetromino3 = getRandomTetromino()
+		}
+
+		setNextTetromino3(tetromino3)
+	}, [])
 
 	const updateTetrominoes = (): void => {
 		let tetromino: Tetromino | null = null
 
-		if (nextTetromino) {
-			tetromino = nextTetromino
-			setNextTetromino(getRandomTetromino())
-		} else {
-			tetromino = getRandomTetromino()
-			setNextTetromino(getRandomTetromino())
+		if (nextTetromino1) {
+			tetromino = nextTetromino1
+
+			if (nextTetromino2) setNextTetromino1(nextTetromino2)
+
+			if (nextTetromino3) setNextTetromino2(nextTetromino3)
+
+
+			let tetromino3: Tetromino | null = getRandomTetromino()
+
+			while (tetromino3?.name === nextTetromino2?.name || tetromino3?.name === nextTetromino3?.name) {
+				tetromino3 = getRandomTetromino()
+			}
+
+			setNextTetromino3(tetromino3)
+
+			setCurrentTetromino(tetromino)
+			setShape(tetromino.shapes[0])
+			setId(uniqueId())
 		}
-
-		setCurrentTetromino(tetromino)
-		setShapeIndex(0)
-		setShape(tetromino.shapes[0])
-		setId(uniqueId())
-	}
-
-	const getNextShape = (): [TetrominoShape | null, number, Array<number>] => {
-		if (!currentTetromino) return [null, 0, [0, 0]]
-
-		const nextShapeIndex = (shapeIndex + 1) % currentTetromino.shapes.length
-
-		const nextShape = currentTetromino.shapes[nextShapeIndex]
-
-		return [nextShape, nextShapeIndex, currentTetromino.xyDiff[nextShapeIndex]]
-	}
-
-	const rotate = (): void => {
-		const [nextShape, nextShapeIndex] = getNextShape()
-
-		setShapeIndex(nextShapeIndex)
-		setShape(nextShape)
 	}
 
 	return {
 		tetrominoId: id,
 		currentTetromino,
-		currentShape: shape,
-		currentShapeIndex: shapeIndex,
-		
+		currentTetrominoShape: shape,
+		nextTetromino1,
+		nextTetromino2,
+		nextTetromino3,
+
 		updateTetrominoes,
-		rotate,
-		getNextShape
 	}
 }

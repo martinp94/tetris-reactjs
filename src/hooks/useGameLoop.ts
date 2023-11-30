@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { initialMatrix } from '../data/initialMatrix'
-import { GameBoard, GameStatus, TetrominoShape } from '../types'
+import { GameBoard, GameStatus, Tetromino, TetrominoShape } from '../types'
 import { useTetromino } from '../hooks/useTetromino'
 import { usePrevious } from '../hooks/usePrevious'
 import { throttle } from 'throttle-debounce'
@@ -27,12 +27,33 @@ const updateVectors = ({ newVX, newVY }: { newVX: number; newVY: number; }): voi
 const getNextX = () => x + vX
 const getNextY = () => y + vY
 
+let currentShape: TetrominoShape | null = null
+let currentShapeIndex: number = 0
+
+const getNextShape = (currentTetromino: Tetromino | null): [TetrominoShape | null, number, Array<number>] => {
+	if (!currentTetromino) return [null, 0, [0, 0]]
+
+	const nextShapeIndex = (currentShapeIndex + 1) % currentTetromino.shapes.length
+
+	const nextShape = currentTetromino.shapes[nextShapeIndex]
+
+	return [nextShape, nextShapeIndex, currentTetromino.xyDiff[nextShapeIndex]]
+}
+
+const setNextShape = (currentTetromino: Tetromino | null): void => {
+	if (!currentTetromino) currentShape = null
+	const [nextShape, nextShapeIndex] = getNextShape(currentTetromino)
+
+	currentShapeIndex = nextShapeIndex
+	currentShape = nextShape
+}
+
 const getShapeWidth = (shape: TetrominoShape): number => Array.isArray(shape) ? shape[0].length : 0
 const getShapeHeight = (shape: TetrominoShape): number => Array.isArray(shape) ? shape.length : 0
 
 let timeoutId: null | ReturnType<typeof setTimeout> = null
 
-export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, boolean, number, number, number] => {
+export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, string, boolean, number, number, number, Tetromino | null, Tetromino | null,Tetromino | null] => {
 	const [speed, setSpeed] = useState<number>(500)
 	const [gameOver, setGameOver] = useState<boolean>(false)
 	const [isRotating, setIsRotating] = useState<boolean>(false)
@@ -45,10 +66,12 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, bool
 
 	const {
 		tetrominoId,
-		currentShape,
+		currentTetromino,
+		currentTetrominoShape,
 		updateTetrominoes,
-		rotate,
-		getNextShape
+		nextTetromino1,
+		nextTetromino2,
+		nextTetromino3
 	} = useTetromino()
 
 	useEffect(() => {
@@ -73,11 +96,15 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, bool
 	}, [gameStatus])
 
 	useEffect(function initRount() {
+		if (currentTetrominoShape) currentShape = currentTetrominoShape
+		currentShapeIndex = 0
+
 		if (!currentShape) return
 
 		updateVectors({ newVX: 0, newVY: 1 })
 		updateCoordinates({ newX: getInitialX(), newY: -1 })
 		move()
+		window.addEventListener("keydown", handleInput)
 
 		return () => {
 			window.removeEventListener('keydown', handleInput)
@@ -92,36 +119,11 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, bool
 		}
 	}, [linesCleared])
 
-	useEffect(function rotation() {
-		if (!currentShape) return
-
-		if (isRotating) {
-			updateCurrentTetrominoMatrix()
-			updateCoordinates({ newX: getNextX(), newY: getNextY() })
-			updateVectors({ newVX: 0, newVY: 1 })
-			setUpdateTimestamp(Date.now())
-
-			setIsRotating(false)
-			// timeoutId = setTimeout(move, speed)
-		}
-
-		if (isRotatingPrev && !isRotating) {
-			window.addEventListener("keydown", handleInput)
-			timeoutId = setTimeout(move, speed)
-		}
-
-		return () => {
-		}
-	}, [isRotating])
-
 	const move = (): void => {
 		if (timeoutId) clearTimeout(timeoutId)
-		window.removeEventListener('keydown', handleInput)
 
-		// I DON'T THINK THIS CHECK IS NEEDED
 		if (!checkBounds({ x: getNextX(), y: getNextY() })) {
 			updateVectors({ newVX: 0, newVY: 1 })
-			// return
 		}
 
 		if (checkCollision()) {
@@ -142,12 +144,11 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, bool
 			return
 		}
 
+		updateVectors({ newVX: 0, newVY: 1 })
 		updateCurrentTetrominoMatrix()
 		updateCoordinates({ newX: getNextX(), newY: getNextY() })
-		updateVectors({ newVX: 0, newVY: 1 })
 		setUpdateTimestamp(Date.now())
 
-		window.addEventListener("keydown", handleInput)
 		timeoutId = setTimeout(move, speed)
 	}
 
@@ -228,79 +229,70 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, bool
 		return true
 	}
 
-	const performRotation = (): void => {
-		// const nextShape: TetrominoShape = getNextShape()
-		// const [shape, shapeIndex, xyDiff] = nextShape
-		const [nextShape, shapeIndex, xyDiff] = getNextShape()
-		updateVectors({ newVX: xyDiff[0], newVY: xyDiff[1] })
-
-		if (!checkBounds({ x: getNextX(), y: getNextY() }, nextShape)) {
-			updateVectors({ newVX: 0, newVY: 1 })
-			timeoutId = setTimeout(move, speed)
-			return
-		}
-
-		if (checkCollision(nextShape)) {
-			updateVectors({ newVX: 0, newVY: 1 })
-			timeoutId = setTimeout(move, speed)
-			return
-		}
-
-		rotate()
-		setIsRotating(true)
-	}
-
-	const handleInput = throttle(20, (event: KeyboardEvent): void => {
-
+	const handleInput = throttle(80, (event: KeyboardEvent): void => {
 		switch (event.key) {
 			case 'ArrowUp':
-				if (timeoutId) clearTimeout(timeoutId)
-				window.removeEventListener('keydown', handleInput)
-				performRotation()
+				const [nextShape, shapeIndex, xyDiff] = getNextShape(currentTetromino)
+
+				if (!checkBounds({ x: getNextX(), y: getNextY() }, nextShape)) {
+					updateVectors({ newVX: 0, newVY: 1 })
+					break
+				}
+
+				if (checkCollision(nextShape)) {
+					updateVectors({ newVX: 0, newVY: 1 })
+					break
+				}
+
+				if (!currentShape) {
+					updateVectors({ newVX: 0, newVY: 1 })
+					break
+				}
+
+				setNextShape(currentTetromino)
+
+				updateCurrentTetrominoMatrix()
+				updateVectors({ newVX: 0, newVY: 1 })
+				setUpdateTimestamp(Date.now())
+
 				break
 			case 'ArrowDown':
-				if (timeoutId) clearTimeout(timeoutId)
-				window.removeEventListener('keydown', handleInput)
 				move()
 				break
 			case 'ArrowLeft':
-				if (timeoutId) clearTimeout(timeoutId)
-				window.removeEventListener('keydown', handleInput)
 				updateVectors({ newVX: -1, newVY: 0 })
-				if (!checkBounds({ x: getNextX(), y: getNextY() })) {
+
+				if (!checkBounds({ x: getNextX(), y: getNextY() }) || checkCollision()) {
 					updateVectors({ newVX: 0, newVY: 1 })
-					
-					setTimeout(() => {
-						move()
-					}, speed);
-				} else {
-					if (checkCollision()) updateVectors({ newVX: 0, newVY: 1 })
-					move()
+					window.addEventListener("keydown", handleInput)
+					break
 				}
+
+				updateCurrentTetrominoMatrix()
+				updateCoordinates({ newX: getNextX(), newY: getNextY() })
+				setUpdateTimestamp(Date.now())
+
+				updateVectors({ newVX: 0, newVY: 1 })
+
 				break
 			case 'ArrowRight':
-				if (timeoutId) clearTimeout(timeoutId)
-				window.removeEventListener('keydown', handleInput)
 				updateVectors({ newVX: 1, newVY: 0 })
-				if (!checkBounds({ x: getNextX(), y: getNextY() })) {
-					updateVectors({ newVX: 0, newVY: 1 })
 
-					// window.addEventListener("keydown", handleInput)
-					// timeoutId = setTimeout(move, speed)
-					setTimeout(() => {
-						move()
-					}, speed);
-				} else {
-					if (checkCollision()) updateVectors({ newVX: 0, newVY: 1 })
-					move()
+				if (!checkBounds({ x: getNextX(), y: getNextY() }) || checkCollision()) {
+					updateVectors({ newVX: 0, newVY: 1 })
+					break
 				}
+
+				updateCurrentTetrominoMatrix()
+				updateCoordinates({ newX: getNextX(), newY: getNextY() })
+				setUpdateTimestamp(Date.now())
+
+				updateVectors({ newVX: 0, newVY: 1 })
+
 				break
 			case ' ':
-				if (timeoutId) clearTimeout(timeoutId)
-				window.removeEventListener('keydown', handleInput)
 				while (!checkCollision()) move()
 				move()
-				// window.addEventListener("keydown", handleInput)
 				break
 			default:
 				break
@@ -382,5 +374,5 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, bool
 		}
 	}
 
-	return [matrix, currentTetrominoMatrix, gameOver, updateTimestamp, points, speed]
+	return [matrix, currentTetrominoMatrix, tetrominoId, gameOver, updateTimestamp, points, speed, nextTetromino1, nextTetromino2, nextTetromino3]
 }
