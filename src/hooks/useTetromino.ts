@@ -28,6 +28,8 @@ export const useTetromino = (): {
 	nextTetromino1: Tetromino | null,
 	nextTetromino2: Tetromino | null,
 	nextTetromino3: Tetromino | null,
+	holdTetromino: Tetromino | null,
+	hold: Function,
 	updateTetrominoes: Function
 } => {
 	const [id, setId] = useState<string>(uniqueId())
@@ -35,6 +37,8 @@ export const useTetromino = (): {
 	const [nextTetromino1, setNextTetromino1] = useState<Tetromino | null>(null)
 	const [nextTetromino2, setNextTetromino2] = useState<Tetromino | null>(null)
 	const [nextTetromino3, setNextTetromino3] = useState<Tetromino | null>(null)
+	const [holdTetromino, setHoldTetromino] = useState<Tetromino | null>(null)
+	const [holdPressed, setHoldPressed] = useState<boolean>(false)
 	const [shape, setShape] = useState<TetrominoShape | null>(null)
 
 	useEffect(() => {
@@ -58,16 +62,14 @@ export const useTetromino = (): {
 		setNextTetromino3(tetromino3)
 	}, [])
 
-	const updateTetrominoes = (): void => {
+	const updateTetrominoes = (isHold = false): void => {
 		let tetromino: Tetromino | null = null
 
 		if (nextTetromino1) {
 			tetromino = nextTetromino1
 
 			if (nextTetromino2) setNextTetromino1(nextTetromino2)
-
 			if (nextTetromino3) setNextTetromino2(nextTetromino3)
-
 
 			let tetromino3: Tetromino | null = getRandomTetromino()
 
@@ -79,8 +81,30 @@ export const useTetromino = (): {
 
 			setCurrentTetromino(tetromino)
 			setShape(tetromino.shapes[0])
-			setId(uniqueId())
+
+			if (!isHold) {
+				setHoldPressed(false)
+				setId(uniqueId())
+			}
 		}
+	}
+
+	const hold = (): void => {
+		if (holdPressed) return
+		setHoldPressed(true)
+
+		if (!holdTetromino) {
+			setHoldTetromino(currentTetromino)
+			updateTetrominoes(true)
+			setId(uniqueId())
+			return
+		}
+
+		let _holdTetromino: Tetromino | null = holdTetromino
+		setHoldTetromino(currentTetromino)
+		setCurrentTetromino(_holdTetromino)
+		setShape(_holdTetromino.shapes[0])
+		setId(uniqueId())
 	}
 
 	return {
@@ -90,7 +114,9 @@ export const useTetromino = (): {
 		nextTetromino1,
 		nextTetromino2,
 		nextTetromino3,
+		holdTetromino,
 
+		hold,
 		updateTetrominoes,
 	}
 }

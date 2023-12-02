@@ -53,13 +53,14 @@ const getShapeHeight = (shape: TetrominoShape): number => Array.isArray(shape) ?
 
 let timeoutId: null | ReturnType<typeof setTimeout> = null
 
-export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, string, boolean, number, number, number, Tetromino | null, Tetromino | null,Tetromino | null] => {
+export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, string, boolean, number, number, number, number, Tetromino | null, Tetromino | null,Tetromino | null, Tetromino | null] => {
 	const [speed, setSpeed] = useState<number>(500)
 	const [gameOver, setGameOver] = useState<boolean>(false)
 	const [isRotating, setIsRotating] = useState<boolean>(false)
 	const [updateTimestamp, setUpdateTimestamp] = useState<number>(Date.now())
 	const [linesCleared, setLinesCleared] = useState<number>(0)
 	const [points, setPoints] = useState<number>(0)
+	const [level, setLevel] = useState<number>(1)
 
 	const isRotatingPrev = usePrevious(isRotating)
 	const previousGameStatus = usePrevious(gameStatus)
@@ -68,10 +69,12 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 		tetrominoId,
 		currentTetromino,
 		currentTetrominoShape,
-		updateTetrominoes,
 		nextTetromino1,
 		nextTetromino2,
-		nextTetromino3
+		nextTetromino3,
+		holdTetromino,
+		updateTetrominoes,
+		hold
 	} = useTetromino()
 
 	useEffect(() => {
@@ -82,6 +85,7 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 			setSpeed(500)
 			setLinesCleared(0)
 			setPoints(0)
+			setLevel(1)
 		}
 
 		if (gameStatus === 'paused' && previousGameStatus === 'started') {
@@ -90,7 +94,6 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 		}
 
 		if (gameStatus === 'started' && previousGameStatus === 'paused') {
-			window.addEventListener("keydown", handleInput)
 			timeoutId = setTimeout(move, speed)
 		}
 	}, [gameStatus])
@@ -116,6 +119,7 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 		if (linesCleared >= 10) {
 			setSpeed((prevSpeed) => prevSpeed * 0.9)
 			setLinesCleared(0)
+			setLevel((prevLevel) => prevLevel + 1)
 		}
 	}, [linesCleared])
 
@@ -177,16 +181,16 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 
 		switch (clearCount) {
 			case 1:
-				setPoints((prevPoints) => prevPoints + 40)
+				setPoints((prevPoints) => prevPoints + (40 * level))
 				break
 			case 2:
-				setPoints((prevPoints) => prevPoints + 100)
+				setPoints((prevPoints) => prevPoints + (100 * level))
 				break
 			case 3:
-				setPoints((prevPoints) => prevPoints + 300)
+				setPoints((prevPoints) => prevPoints + (300 * level))
 				break
 			case 4:
-				setPoints((prevPoints) => prevPoints + 1200)
+				setPoints((prevPoints) => prevPoints + (1200 * level))
 				break
 			default: break
 		}
@@ -294,6 +298,10 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 				while (!checkCollision()) move()
 				move()
 				break
+			case 'C':
+			case 'c':
+				hold()
+				break
 			default:
 				break
 		}
@@ -374,5 +382,18 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 		}
 	}
 
-	return [matrix, currentTetrominoMatrix, tetrominoId, gameOver, updateTimestamp, points, speed, nextTetromino1, nextTetromino2, nextTetromino3]
+	return [
+		matrix,
+		currentTetrominoMatrix,
+		tetrominoId,
+		gameOver,
+		updateTimestamp,
+		points,
+		speed,
+		level,
+		nextTetromino1,
+		nextTetromino2,
+		nextTetromino3,
+		holdTetromino
+	]
 }
