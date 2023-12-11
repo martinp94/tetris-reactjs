@@ -53,7 +53,7 @@ const getShapeHeight = (shape: TetrominoShape): number => Array.isArray(shape) ?
 
 let timeoutId: null | ReturnType<typeof setTimeout> = null
 
-export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, string, boolean, number, number, number, number, Tetromino | null, Tetromino | null,Tetromino | null, Tetromino | null] => {
+export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, string, boolean, number, number, number, number, Tetromino | null, Tetromino | null, Tetromino | null, Tetromino | null] => {
 	const [speed, setSpeed] = useState<number>(500)
 	const [gameOver, setGameOver] = useState<boolean>(false)
 	const [isRotating, setIsRotating] = useState<boolean>(false)
@@ -236,7 +236,9 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 	const handleInput = throttle(80, (event: KeyboardEvent): void => {
 		switch (event.key) {
 			case 'ArrowUp':
-				const [nextShape, shapeIndex, xyDiff] = getNextShape(currentTetromino)
+				let [nextShape, shapeIndex, xyDiff] = getNextShape(currentTetromino)
+
+				updateVectors({ newVX: xyDiff[0], newVY: xyDiff[1] })
 
 				if (!checkBounds({ x: getNextX(), y: getNextY() }, nextShape)) {
 					updateVectors({ newVX: 0, newVY: 1 })
@@ -256,6 +258,7 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 				setNextShape(currentTetromino)
 
 				updateCurrentTetrominoMatrix()
+				updateCoordinates({ newX: getNextX(), newY: getNextY() })
 				updateVectors({ newVX: 0, newVY: 1 })
 				setUpdateTimestamp(Date.now())
 

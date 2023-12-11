@@ -5,10 +5,14 @@ export const tetrominoI: Tetromino = {
 	color: '#00FFFF',
 	shapes: [
 		[['#00FFFF', '#00FFFF', '#00FFFF', '#00FFFF']],
+		[['#00FFFF'], ['#00FFFF'], ['#00FFFF'], ['#00FFFF']],
+		[['#00FFFF', '#00FFFF', '#00FFFF', '#00FFFF']],
 		[['#00FFFF'], ['#00FFFF'], ['#00FFFF'], ['#00FFFF']]
 	],
 	xyDiff: [
 		[-2, 1],
-		[2, -1]
+		[2, -1],
+		[-2, 2],
+		[1, -2]
 	]
 }
