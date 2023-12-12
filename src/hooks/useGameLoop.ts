@@ -51,18 +51,32 @@ const setNextShape = (currentTetromino: Tetromino | null): void => {
 const getShapeWidth = (shape: TetrominoShape): number => Array.isArray(shape) ? shape[0].length : 0
 const getShapeHeight = (shape: TetrominoShape): number => Array.isArray(shape) ? shape.length : 0
 
+const updateLock = (): void => {
+	if (attemtsBeforeLock === 0) return
+	attemtsBeforeLock--
+	if (lockTimeoutId) clearTimeout(lockTimeoutId)
+
+	shouldLock = false
+
+	lockTimeoutId = setTimeout(() => {
+		shouldLock = true
+	}, 500)
+}
+
 let timeoutId: null | ReturnType<typeof setTimeout> = null
+
+let lockTimeoutId: null | ReturnType<typeof setTimeout> = null
+let attemtsBeforeLock: number = 15
+let shouldLock: boolean = false
 
 export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, string, boolean, number, number, number, number, Tetromino | null, Tetromino | null, Tetromino | null, Tetromino | null] => {
 	const [speed, setSpeed] = useState<number>(500)
 	const [gameOver, setGameOver] = useState<boolean>(false)
-	const [isRotating, setIsRotating] = useState<boolean>(false)
 	const [updateTimestamp, setUpdateTimestamp] = useState<number>(Date.now())
 	const [linesCleared, setLinesCleared] = useState<number>(0)
 	const [points, setPoints] = useState<number>(0)
 	const [level, setLevel] = useState<number>(1)
 
-	const isRotatingPrev = usePrevious(isRotating)
 	const previousGameStatus = usePrevious(gameStatus)
 
 	const {
@@ -94,19 +108,21 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 		}
 
 		if (gameStatus === 'started' && previousGameStatus === 'paused') {
-			timeoutId = setTimeout(move, speed)
+			timeoutId = setTimeout(moveDown, speed)
 		}
 	}, [gameStatus])
 
 	useEffect(function initRount() {
 		if (currentTetrominoShape) currentShape = currentTetrominoShape
 		currentShapeIndex = 0
+		attemtsBeforeLock = 15
+		shouldLock = true
 
 		if (!currentShape) return
 
 		updateVectors({ newVX: 0, newVY: 1 })
 		updateCoordinates({ newX: getInitialX(), newY: -1 })
-		move()
+		moveDown()
 		window.addEventListener("keydown", handleInput)
 
 		return () => {
@@ -123,7 +139,7 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 		}
 	}, [linesCleared])
 
-	const move = (): void => {
+	const moveDown = (args: undefined | { forceLock: boolean } = undefined): void => {
 		if (timeoutId) clearTimeout(timeoutId)
 
 		if (!checkBounds({ x: getNextX(), y: getNextY() })) {
@@ -139,12 +155,18 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 				return
 			}
 
-			updateMatrix()
-			setUpdateTimestamp(Date.now())
+			if (attemtsBeforeLock === 0 || shouldLock || args?.forceLock) {
+				updateMatrix()
+				setUpdateTimestamp(Date.now())
 
-			clearLevels()
+				clearLevels()
 
-			updateTetrominoes()
+				updateTetrominoes()
+
+				return
+			}
+
+			timeoutId = setTimeout(moveDown, speed)
 			return
 		}
 
@@ -153,7 +175,7 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 		updateCoordinates({ newX: getNextX(), newY: getNextY() })
 		setUpdateTimestamp(Date.now())
 
-		timeoutId = setTimeout(move, speed)
+		timeoutId = setTimeout(moveDown, speed)
 	}
 
 	const clearLevels = (): void => {
@@ -240,17 +262,7 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 
 				updateVectors({ newVX: xyDiff[0], newVY: xyDiff[1] })
 
-				if (!checkBounds({ x: getNextX(), y: getNextY() }, nextShape)) {
-					updateVectors({ newVX: 0, newVY: 1 })
-					break
-				}
-
-				if (checkCollision(nextShape)) {
-					updateVectors({ newVX: 0, newVY: 1 })
-					break
-				}
-
-				if (!currentShape) {
+				if (!checkBounds({ x: getNextX(), y: getNextY() }, nextShape) || checkCollision(nextShape) || !currentShape) {
 					updateVectors({ newVX: 0, newVY: 1 })
 					break
 				}
@@ -261,17 +273,18 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 				updateCoordinates({ newX: getNextX(), newY: getNextY() })
 				updateVectors({ newVX: 0, newVY: 1 })
 				setUpdateTimestamp(Date.now())
+				
+				updateLock()
 
 				break
 			case 'ArrowDown':
-				move()
+				moveDown({ forceLock: true })
 				break
 			case 'ArrowLeft':
 				updateVectors({ newVX: -1, newVY: 0 })
 
 				if (!checkBounds({ x: getNextX(), y: getNextY() }) || checkCollision()) {
 					updateVectors({ newVX: 0, newVY: 1 })
-					window.addEventListener("keydown", handleInput)
 					break
 				}
 
@@ -280,6 +293,8 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 				setUpdateTimestamp(Date.now())
 
 				updateVectors({ newVX: 0, newVY: 1 })
+				
+				updateLock()
 
 				break
 			case 'ArrowRight':
@@ -295,11 +310,13 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 				setUpdateTimestamp(Date.now())
 
 				updateVectors({ newVX: 0, newVY: 1 })
+				
+				updateLock()
 
 				break
 			case ' ':
-				while (!checkCollision()) move()
-				move()
+				while (!checkCollision()) moveDown()
+				moveDown({ forceLock: true })
 				break
 			case 'C':
 			case 'c':
