@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react'
 import { initialMatrix } from '../data/initialMatrix'
-import { GameBoard, GameStatus, Tetromino, TetrominoShape } from '../types'
+import { GameBoard, GameStatus, Tetromino, TetrominoShape, TetriminoPosition } from '../types'
 import { useTetromino } from '../hooks/useTetromino'
 import { usePrevious } from '../hooks/usePrevious'
 import { throttle } from 'throttle-debounce'
+
+type CheckCollisionOpts = {
+	nextX: number;
+	nextY: number;
+}
 
 let matrix: GameBoard = JSON.parse(JSON.stringify(initialMatrix))
 let currentTetrominoMatrix: GameBoard = matrix
@@ -28,24 +33,75 @@ const getNextX = () => x + vX
 const getNextY = () => y + vY
 
 let currentShape: TetrominoShape | null = null
-let currentShapeIndex: number = 0
+let currentShapeIndex: TetriminoPosition = 0
 
-const getNextShape = (currentTetromino: Tetromino | null): [TetrominoShape | null, number, Array<number>] => {
-	if (!currentTetromino) return [null, 0, [0, 0]]
+const getNextShapePosition = (currentTetromino: Tetromino | null): TetriminoPosition => {
+	if (!currentTetromino) return 0
 
-	const nextShapeIndex = (currentShapeIndex + 1) % currentTetromino.shapes.length
+	const nextShapePosition = (currentShapeIndex+ 1) % currentTetromino.shapes.length
 
-	const nextShape = currentTetromino.shapes[nextShapeIndex]
+	if (nextShapePosition === 0 || nextShapePosition === 1 || nextShapePosition === 2 || nextShapePosition === 3) return nextShapePosition
 
-	return [nextShape, nextShapeIndex, currentTetromino.xyDiff[nextShapeIndex]]
+	return 0
+}
+
+const getPreviousShapePosition = (currentTetromino: Tetromino | null): TetriminoPosition => {
+	if (!currentTetromino) return 0
+
+	const previousShapePosition = currentShapeIndex === 0 ? currentTetromino.shapes.length - 1 : currentShapeIndex - 1
+
+	if (previousShapePosition === 0 || previousShapePosition === 1 || previousShapePosition === 2 || previousShapePosition === 3) return previousShapePosition
+
+	return 0
+}
+
+const getNextShape = (currentTetromino: Tetromino | null): [TetrominoShape | null, TetriminoPosition, Array<number>] => {
+	if (!currentTetromino?.rotations) return [null, 0, [0, 0]]
+
+	const nextShapePosition = getNextShapePosition(currentTetromino)
+
+	if (currentTetromino.rotations[currentShapeIndex] && nextShapePosition in currentTetromino.rotations[currentShapeIndex]) {
+		const rotations = currentTetromino.rotations[currentShapeIndex][nextShapePosition]
+
+		const nextShape = currentTetromino.shapes[nextShapePosition]
+
+		return [nextShape, nextShapePosition, rotations?.[0] || [0, 0]]
+	}
+
+	return [null, 0, [0, 0]]
+}
+
+const getPreviousShape = (currentTetromino: Tetromino | null): [TetrominoShape | null, TetriminoPosition, Array<number>] => {
+	if (!currentTetromino?.rotations) return [null, 0, [0, 0]]
+
+	const previousShapePosition = getPreviousShapePosition(currentTetromino)
+
+	if (currentTetromino.rotations[currentShapeIndex] && previousShapePosition in currentTetromino.rotations[currentShapeIndex]) {
+		const rotations = currentTetromino.rotations[currentShapeIndex][previousShapePosition]
+
+		const previousShape = currentTetromino.shapes[previousShapePosition]
+
+		return [previousShape, previousShapePosition, rotations?.[0] || [0, 0]]
+	}
+
+	return [null, 0, [0, 0]]
 }
 
 const setNextShape = (currentTetromino: Tetromino | null): void => {
-	if (!currentTetromino) currentShape = null
-	const [nextShape, nextShapeIndex] = getNextShape(currentTetromino)
+	if (!currentTetromino) return
+	const [nextShape, nextShapePosition] = getNextShape(currentTetromino);
 
-	currentShapeIndex = nextShapeIndex
-	currentShape = nextShape
+	currentShapeIndex = nextShapePosition;
+
+	currentShape = nextShape;
+}
+
+const setPreviousShape = (currentTetromino: Tetromino | null): void => {
+	if (!currentTetromino) return
+	const [previousShape, previousShapeIndex] = getPreviousShape(currentTetromino)
+
+	currentShapeIndex = previousShapeIndex
+	currentShape = previousShape
 }
 
 const getShapeWidth = (shape: TetrominoShape): number => Array.isArray(shape) ? shape[0].length : 0
@@ -141,10 +197,6 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 
 	const moveDown = (args: undefined | { forceLock: boolean } = undefined): void => {
 		if (timeoutId) clearTimeout(timeoutId)
-
-		if (!checkBounds({ x: getNextX(), y: getNextY() })) {
-			updateVectors({ newVX: 0, newVY: 1 })
-		}
 
 		if (checkCollision()) {
 			if (getNextY() === 0) {
@@ -258,22 +310,74 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 	const handleInput = throttle(80, (event: KeyboardEvent): void => {
 		switch (event.key) {
 			case 'ArrowUp':
-				let [nextShape, shapeIndex, xyDiff] = getNextShape(currentTetromino)
+				// let [nextShape, nextShapePosition, xyDiff] = getNextShape(currentTetromino)
+				// updateVectors({ newVX: xyDiff[0], newVY: xyDiff[1] })
+				if (!currentShape) return
 
-				updateVectors({ newVX: xyDiff[0], newVY: xyDiff[1] })
+				const nextShapePosition = getNextShapePosition(currentTetromino)
+				const previousShapePosition = getPreviousShapePosition(currentTetromino)
 
-				if (!checkBounds({ x: getNextX(), y: getNextY() }, nextShape) || checkCollision(nextShape) || !currentShape) {
+				let isCollision = true
+				let isRotatedCounterClockwise = false
+				const rotationsCW = currentTetromino?.rotations?.[currentShapeIndex]?.[nextShapePosition]
+				const rotationsCCW = currentTetromino?.rotations?.[currentShapeIndex]?.[previousShapePosition]
+
+				if (Array.isArray(rotationsCW)) {
+					for (const rotationIndex in rotationsCW) {
+						const rotation = rotationsCW[rotationIndex]
+						let newVX = rotation[0]
+						let newVY = rotation[1]
+
+						if (Number(rotationIndex) !== 0) {
+							newVX = rotation[0] + rotationsCW[0][0]
+							newVY = rotation[1] + rotationsCW[0][1]
+						}
+
+						updateVectors({ newVX, newVY })
+
+						const shape = currentTetromino?.shapes?.[nextShapePosition]
+
+						isCollision = checkCollision(shape)
+						if (!isCollision) break
+					}
+				}
+
+				if (Array.isArray(rotationsCCW) && isCollision) {
+					for (const rotationIndex in rotationsCCW) {
+						const rotation = rotationsCCW[rotationIndex]
+						let newVX = rotation[0]
+						let newVY = rotation[1]
+
+						if (Number(rotationIndex) !== 0) {
+							newVX = rotation[0] + rotationsCCW[0][0]
+							newVY = rotation[1] + rotationsCCW[0][1]
+						}
+
+						updateVectors({ newVX, newVY })
+
+						const shape = currentTetromino?.shapes?.[previousShapePosition]
+
+						isCollision = checkCollision(shape)
+						if (!isCollision) {
+							isRotatedCounterClockwise = true
+							break
+						}
+					}
+				}
+
+				if (isCollision) {
 					updateVectors({ newVX: 0, newVY: 1 })
 					break
 				}
 
-				setNextShape(currentTetromino)
+				if (isRotatedCounterClockwise) setPreviousShape(currentTetromino)
+				else setNextShape(currentTetromino)
 
 				updateCurrentTetrominoMatrix()
 				updateCoordinates({ newX: getNextX(), newY: getNextY() })
 				updateVectors({ newVX: 0, newVY: 1 })
 				setUpdateTimestamp(Date.now())
-				
+
 				updateLock()
 
 				break
@@ -283,7 +387,7 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 			case 'ArrowLeft':
 				updateVectors({ newVX: -1, newVY: 0 })
 
-				if (!checkBounds({ x: getNextX(), y: getNextY() }) || checkCollision()) {
+				if (checkCollision()) {
 					updateVectors({ newVX: 0, newVY: 1 })
 					break
 				}
@@ -293,14 +397,14 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 				setUpdateTimestamp(Date.now())
 
 				updateVectors({ newVX: 0, newVY: 1 })
-				
+
 				updateLock()
 
 				break
 			case 'ArrowRight':
 				updateVectors({ newVX: 1, newVY: 0 })
 
-				if (!checkBounds({ x: getNextX(), y: getNextY() }) || checkCollision()) {
+				if (checkCollision()) {
 					updateVectors({ newVX: 0, newVY: 1 })
 					break
 				}
@@ -310,7 +414,7 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 				setUpdateTimestamp(Date.now())
 
 				updateVectors({ newVX: 0, newVY: 1 })
-				
+
 				updateLock()
 
 				break
@@ -327,11 +431,15 @@ export const useGameLoop = (gameStatus: GameStatus): [GameBoard, GameBoard, stri
 		}
 	})
 
-	const checkCollision = (shape: TetrominoShape | null = currentShape): boolean => {
+	const checkCollision = (
+		shape: TetrominoShape | null = currentShape,
+		opts: CheckCollisionOpts = { nextX: getNextX(), nextY: getNextY() }
+	): boolean => {
 		if (!shape) return true
 
-		const nextX = getNextX()
-		const nextY = getNextY()
+		const { nextX, nextY } = opts
+
+		if (!checkBounds({ x: nextX, y: nextY }, shape)) updateVectors({ newVX: 0, newVY: 1 })
 
 		const shapeWidth = getShapeWidth(shape)
 		const shapeHeight = getShapeHeight(shape)
